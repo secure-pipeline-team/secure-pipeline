@@ -14,4 +14,4 @@ This project is completed as part of the Academic Assignment for the Module IE31
 
 # References #
 
-# Porject Report #
+# Project Report #

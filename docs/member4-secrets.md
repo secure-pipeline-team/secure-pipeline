@@ -18,7 +18,7 @@ Node.js dependency folders (`node_modules/`) and debug log files (`npm-debug.log
 
 ## GitHub Actions Secrets
 
-To demonstrate secure secrets management, the following secrets have been configured in the GitHub repository settings under **Settings > Secrets and variables > Actions**:
+To demonstrate secure secrets provisioning, the following encrypted secrets have been successfully configured in the GitHub repository settings:
 - `JWT_SECRET`
 - `DB_PASSWORD`
 
@@ -45,7 +45,7 @@ The actual secret values are never stored in the source-code repository or Git h
 
 ## Current Project Status
 
-While the Juice Shop application does not have hardcoded credentials in its source code, the CI/CD pipeline has been configured to use GitHub Actions encrypted secrets (`JWT_SECRET` and `DB_PASSWORD`) to prove that the mechanism works. This ensures the repository is fully prepared to securely handle secrets for any future pipeline or application components.
+While the Juice Shop application does not contain hardcoded credentials in its source code, the `JWT_SECRET` and `DB_PASSWORD` have been created as GitHub Actions encrypted secrets to fulfill the assignment requirement. This proves that our CI/CD pipeline is capable of securely handling sensitive configurations without exposing them in the repository. Member 3 will integrate these secrets into the pipeline workflow.
 
 ## Validation
 

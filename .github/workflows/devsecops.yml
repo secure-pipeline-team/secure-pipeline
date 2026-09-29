@@ -2,22 +2,17 @@ name: DevSecOps Pipeline
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: ["main", "develop"]
   pull_request:
-    branches: [ "main" ]
-
-env:
-  # Member 4 secrets — GitHub Actions encrypted secrets
-  JWT_SECRET: ${{ secrets.JWT_SECRET }}
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    branches: ["main"]
 
 jobs:
-  # =========================================================
-  # JOB 1: Build + Test
-  # =========================================================
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,9 +47,6 @@ jobs:
           path: juice-shop.tar
           retention-days: 1
 
-  # =========================================================
-  # JOB 2: SAST — Semgrep
-  # =========================================================
   sast-semgrep:
     name: SAST (Semgrep)
     runs-on: ubuntu-latest
@@ -98,9 +90,6 @@ print(len(high))
           name: semgrep-sarif
           path: juice-shop/semgrep.sarif
 
-  # =========================================================
-  # JOB 3: SCA — npm audit
-  # =========================================================
   sca-npm-audit:
     name: SCA (npm audit)
     runs-on: ubuntu-latest
@@ -155,9 +144,6 @@ print(d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0))
           name: npm-audit-report
           path: juice-shop/npm-audit.json
 
-  # =========================================================
-  # JOB 4: Secrets scan — Gitleaks
-  # =========================================================
   secrets-gitleaks:
     name: Secrets Scan (Gitleaks)
     runs-on: ubuntu-latest
@@ -172,9 +158,6 @@ print(d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0))
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: false
 
-  # =========================================================
-  # JOB 5: Container scan — Trivy
-  # =========================================================
   container-trivy:
     name: Container Scan (Trivy)
     runs-on: ubuntu-latest
@@ -206,4 +189,3 @@ print(d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0))
         with:
           name: trivy-report
           path: trivy-report.txt
-

@@ -1,44 +1,49 @@
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const proxy = require('express-http-proxy');
 const helmet = require('helmet');
 
 const app = express();
 const PORT = 8080;
-const TARGET = process.env.TARGET || 'http://localhost:3000';
+const TARGET = process.env.TARGET || 'http://juice-shop:3000';
 
-// Trust proxy headers
 app.set('trust proxy', true);
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
-// Basic security headers (bonus - fixes cookie flags issue)
-app.use(helmet({
-  contentSecurityPolicy: false, // We'll handle XSS separately
-  crossOriginEmbedderPolicy: false
-}));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Parse JSON and URL-encoded bodies
-//app.use(express.json({ limit: '1mb' }));
-//app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// Health check endpoint
 app.get('/_health', (req, res) => {
   res.json({ status: 'ok', target: TARGET, time: new Date().toISOString() });
 });
 
-// SECURITY FIXES WILL GO HERE
+const SQLI_PATTERN = /('|--|;|\/\*|\*\/|\bUNION\b|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bDROP\b|\bOR\s+1\s*=\s*1\b)/i;
 
-// Proxy everything else to Juice Shop
-app.use('/', createProxyMiddleware({
-  target: TARGET,
-  changeOrigin: true,
-  ws: true,
-  logLevel: 'warn',
-  onError: (err, req, res) => {
+app.use('/rest/user/login', (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  const email = (req.body && req.body.email) || '';
+  const password = (req.body && req.body.password) || '';
+  console.log(`[/rest/user/login] inspecting email="${email}"`);
+  if (SQLI_PATTERN.test(email) || SQLI_PATTERN.test(password)) {
+    console.warn(`[BLOCKED] SQLi attempt — email="${email}"`);
+    return res.status(401).json({ error: 'Invalid credentials', message: 'Input rejected by security policy' });
+  }
+  next();
+});
+
+app.use('/', proxy(TARGET, {
+  proxyReqBodyDecorator: (bodyContent, srcReq) => {
+    // Re-send the JSON body
+    return srcReq.body ? JSON.stringify(srcReq.body) : bodyContent;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    return proxyResData;
+  },
+  proxyErrorHandler: (err, res, next) => {
     console.error('[proxy error]', err.message);
     res.status(502).json({ error: 'Upstream unavailable' });
   }
 }));
 
 app.listen(PORT, () => {
-  console.log(` Security middleware listening on http://localhost:${PORT}`);
-  console.log(`   Forwarding to: ${TARGET}`);
+  console.log(`✅ Middleware on :${PORT} → ${TARGET}`);
 });

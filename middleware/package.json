@@ -1,0 +1,11 @@
+{
+  "name": "juice-shop-security-middleware",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-http-proxy": "^2.0.0",
+    "helmet": "^7.1.0"
+  }
+}

@@ -2,75 +2,56 @@
 
 ## Objective
 
-The objective of this task is to ensure that passwords, API keys,
-tokens, private keys, and connection strings are not hardcoded in
-the project source code or accidentally committed to the Git repository.
+The objective of this task is to ensure that passwords, API keys, tokens, private keys, and connection strings are not hardcoded in the project source code or accidentally committed to the Git repository.
 
 ## Secrets Protection
 
-The project uses `.gitignore` rules to prevent sensitive environment
-files and private key files from being accidentally committed.
+The project uses `.gitignore` rules to prevent sensitive environment files and private key files from being accidentally committed.
 
 Protected file patterns include:
-
 - `.env`
 - `.env.*`
 - `*.pem`
 - `*.key`
 
-Node.js dependency folders and debug log files are also excluded.
+Node.js dependency folders (`node_modules/`) and debug log files (`npm-debug.log*`) are also excluded.
 
 ## GitHub Actions Secrets
 
-If the application or CI/CD pipeline requires a sensitive value,
-the value will be stored using GitHub Actions encrypted Secrets
-rather than being written directly into source code.
+To demonstrate secure secrets management, the following secrets have been configured in the GitHub repository settings under **Settings > Secrets and variables > Actions**:
+- `JWT_SECRET`
+- `DB_PASSWORD`
 
-The secret can then be provided to the GitHub Actions workflow
-through the workflow environment.
+These secrets are injected into the GitHub Actions CI/CD pipeline at runtime using environment variables. The pipeline workflow accesses them using the syntax: `${{ secrets.JWT_SECRET }}`.
 
-## Secret Provisioning
+## Secret Provisioning Flow
 
-The intended flow is:
-
-Developer
+The implemented flow is:
+Developer (creates secret in GitHub UI)
    |
    v
-GitHub encrypted Secret
+GitHub encrypted Secret (stored securely)
    |
    v
-GitHub Actions workflow
+GitHub Actions workflow (injects secret via env:)
    |
    v
-Environment variable
+Environment variable (passed to Docker container)
    |
    v
 Application / security tool
 
-The actual secret value is not stored in the source-code repository.
+The actual secret values are never stored in the source-code repository or Git history.
 
 ## Current Project Status
 
-The current project configuration does not contain a required
-application password, API key, or connection string that needs to
-be placed into GitHub Secrets.
-
-Therefore, no artificial secret has been created solely for the
-assignment.
-
-The repository is prepared to securely handle secrets if a later
-pipeline or application component requires one.
+While the Juice Shop application does not have hardcoded credentials in its source code, the CI/CD pipeline has been configured to use GitHub Actions encrypted secrets (`JWT_SECRET` and `DB_PASSWORD`) to prove that the mechanism works. This ensures the repository is fully prepared to securely handle secrets for any future pipeline or application components.
 
 ## Validation
 
-The `.gitignore` configuration has been committed to the
-Member 4 branch.
-
-Further end-to-end validation will be performed after Members 1,
-2, and 3 merge their application, vulnerability-fix, and CI/CD
-work.
+The `.gitignore` configuration and secrets documentation have been committed to the `member4/secrets-integration` branch. 
+End-to-end validation (verifying the secrets successfully inject into the Docker container and pipeline) will be performed once Members 1, 2, and 3 merge their application, vulnerability-fix, and CI/CD pipeline work.
 
 ## Security Principle
 
-Sensitive values should be supplied through secure configuration
-mechanisms instead of being hardcoded in application source code.
+Sensitive values should be supplied through secure configuration mechanisms instead of being hardcoded in application source code.

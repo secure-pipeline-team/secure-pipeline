@@ -206,3 +206,4 @@ print(d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0))
         with:
           name: trivy-report
           path: trivy-report.txt
+

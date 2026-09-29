@@ -66,18 +66,26 @@ jobs:
       - name: Show Semgrep findings
         working-directory: juice-shop
         run: |
-          cat semgrep-report.json | python3 -c "import sys,json; d=json.load(sys.stdin); print('Findings:', len(d.get('results', [])))"
+          python3 << 'PYEOF'
+          import json
+          with open('semgrep-report.json') as f:
+              d = json.load(f)
+          print('Findings:', len(d.get('results', [])))
+          PYEOF
 
       - name: Fail on HIGH severity findings
         working-directory: juice-shop
         run: |
-          HIGH=$(cat semgrep-report.json | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-high = [r for r in d.get('results', []) if r.get('extra',{}).get('severity','').upper() == 'ERROR']
-print(len(high))
-")
-          echo "High-severity findings: $HIGH"
+          python3 << 'PYEOF'
+          import json
+          with open('semgrep-report.json') as f:
+              d = json.load(f)
+          high = [r for r in d.get('results', []) if r.get('extra', {}).get('severity', '').upper() == 'ERROR']
+          print(f'High-severity findings: {len(high)}')
+          with open('high-count.txt', 'w') as f:
+              f.write(str(len(high)))
+          PYEOF
+          HIGH=$(cat high-count.txt)
           if [ "$HIGH" -gt 0 ]; then
             echo "::error::Semgrep found $HIGH high-severity issues. Failing build."
             exit 1
@@ -113,24 +121,29 @@ print(len(high))
       - name: Show audit summary
         working-directory: juice-shop
         run: |
-          cat npm-audit.json | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-m = d.get('metadata', {}).get('vulnerabilities', {})
-print('Critical:', m.get('critical', 0))
-print('High:', m.get('high', 0))
-print('Moderate:', m.get('moderate', 0))
-print('Low:', m.get('low', 0))
-"
+          python3 << 'PYEOF'
+          import json
+          with open('npm-audit.json') as f:
+              d = json.load(f)
+          m = d.get('metadata', {}).get('vulnerabilities', {})
+          print('Critical:', m.get('critical', 0))
+          print('High:', m.get('high', 0))
+          print('Moderate:', m.get('moderate', 0))
+          print('Low:', m.get('low', 0))
+          PYEOF
 
       - name: Fail on critical vulnerabilities
         working-directory: juice-shop
         run: |
-          CRIT=$(cat npm-audit.json | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-print(d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0))
-")
+          python3 << 'PYEOF'
+          import json
+          with open('npm-audit.json') as f:
+              d = json.load(f)
+          crit = d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0)
+          with open('crit-count.txt', 'w') as f:
+              f.write(str(crit))
+          PYEOF
+          CRIT=$(cat crit-count.txt)
           echo "Critical vulnerabilities: $CRIT"
           if [ "$CRIT" -gt 0 ]; then
             echo "::error::npm audit found $CRIT critical vulnerabilities."

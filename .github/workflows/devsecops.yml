@@ -13,6 +13,9 @@ jobs:
     env:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+     
+        
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,6 +26,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+
+      - name: Verify secrets are injected (masked)
+        run: |
+          echo "Secret masking verification:"
+          echo "JWT_SECRET is set: ${{ secrets.JWT_SECRET != '' }}"
+          echo "DB_PASSWORD is set: ${{ secrets.DB_PASSWORD != '' }}"
+          echo "JWT_SECRET value (should show ***): ${{ secrets.JWT_SECRET }}"
+          echo "DB_PASSWORD value (should show ***): ${{ secrets.DB_PASSWORD }}"
 
       - name: Install dependencies
         working-directory: juice-shop

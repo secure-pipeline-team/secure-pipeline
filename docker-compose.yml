@@ -1,5 +1,24 @@
 services:
- juice-shop:
-   image: bkimminich/juice-shop
-   ports:
-     - "3000:3000"
+  juice-shop:
+    image: bkimminich/juice-shop
+    container_name: juice-shop
+    ports:
+      - "3000:3000"
+    networks:
+      - devsecops
+
+  middleware:
+    build: ./middleware
+    container_name: juice-shop-middleware
+    ports:
+      - "8080:8080"
+    environment:
+      - TARGET=http://juice-shop:3000
+    depends_on:
+      - juice-shop
+    networks:
+      - devsecops
+
+networks:
+  devsecops:
+    driver: bridge

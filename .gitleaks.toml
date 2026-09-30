@@ -1,0 +1,17 @@
+title = "Juice Shop DevSecOps Gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''node_modules/.*''',
+  '''.*\.min\.js''',
+  '''package-lock\.json''',
+  '''.*\.sarif''',
+  '''.*-report\.json''',
+  '''juice-shop/data/.*''',
+  '''juice-shop/test/.*''',
+  '''juice-shop/frontend/src/assets/.*'''
+]

@@ -1,0 +1,215 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: ["main", "develop", "member3/cicd-security"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+     
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Verify secrets are injected (masked)
+        run: |
+          echo "Secret masking verification:"
+          echo "JWT_SECRET is set: ${{ secrets.JWT_SECRET != '' }}"
+          echo "DB_PASSWORD is set: ${{ secrets.DB_PASSWORD != '' }}"
+          echo "JWT_SECRET value (should show ***): ${{ secrets.JWT_SECRET }}"
+          echo "DB_PASSWORD value (should show ***): ${{ secrets.DB_PASSWORD }}"
+
+      - name: Install dependencies
+        working-directory: juice-shop
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Run tests
+        working-directory: juice-shop
+        run: npm test --if-present
+        continue-on-error: true
+
+      - name: Build Docker image
+        working-directory: juice-shop
+        run: docker build -t juice-shop:${{ github.sha }} .
+
+      - name: Save image as artifact
+        run: docker save juice-shop:${{ github.sha }} -o juice-shop.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: juice-shop-image
+          path: juice-shop.tar
+          retention-days: 1
+
+  sast-semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep
+        working-directory: juice-shop
+        run: |
+          semgrep --config=auto --json --output=semgrep-report.json . || true
+          semgrep --config=auto --sarif --output=semgrep.sarif . || true
+
+      - name: Show Semgrep findings
+        working-directory: juice-shop
+        run: |
+          python3 << 'PYEOF'
+          import json
+          with open('semgrep-report.json') as f:
+              d = json.load(f)
+          print('Findings:', len(d.get('results', [])))
+          PYEOF
+
+      - name: Fail on HIGH severity findings
+        working-directory: juice-shop
+        run: |
+          python3 << 'PYEOF'
+          import json
+          with open('semgrep-report.json') as f:
+              d = json.load(f)
+          high = [r for r in d.get('results', []) if r.get('extra', {}).get('severity', '').upper() == 'ERROR']
+          print(f'High-severity findings: {len(high)}')
+          with open('high-count.txt', 'w') as f:
+              f.write(str(len(high)))
+          PYEOF
+          HIGH=$(cat high-count.txt)
+          if [ "$HIGH" -gt 0 ]; then
+            echo "::error::Semgrep found $HIGH high-severity issues. Failing build."
+            exit 1
+          fi
+
+      - name: Upload Semgrep SARIF
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: juice-shop/semgrep.sarif
+
+  sca-npm-audit:
+    name: SCA (npm audit)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: juice-shop
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Run npm audit
+        working-directory: juice-shop
+        run: |
+          npm audit --json > npm-audit.json || true
+
+      - name: Show audit summary
+        working-directory: juice-shop
+        run: |
+          python3 << 'PYEOF'
+          import json
+          with open('npm-audit.json') as f:
+              d = json.load(f)
+          m = d.get('metadata', {}).get('vulnerabilities', {})
+          print('Critical:', m.get('critical', 0))
+          print('High:', m.get('high', 0))
+          print('Moderate:', m.get('moderate', 0))
+          print('Low:', m.get('low', 0))
+          PYEOF
+
+      - name: Fail on critical vulnerabilities
+        working-directory: juice-shop
+        run: |
+          python3 << 'PYEOF'
+          import json
+          with open('npm-audit.json') as f:
+              d = json.load(f)
+          crit = d.get('metadata', {}).get('vulnerabilities', {}).get('critical', 0)
+          with open('crit-count.txt', 'w') as f:
+              f.write(str(crit))
+          PYEOF
+          CRIT=$(cat crit-count.txt)
+          echo "Critical vulnerabilities: $CRIT"
+          if [ "$CRIT" -gt 0 ]; then
+            echo "::error::npm audit found $CRIT critical vulnerabilities."
+            exit 1
+          fi
+
+      - name: Upload npm audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-report
+          path: juice-shop/npm-audit.json
+
+  secrets-gitleaks:
+    name: Secrets Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: false
+
+  container-trivy:
+    name: Container Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: juice-shop-image
+
+      - name: Load Docker image
+        run: docker load -i juice-shop.tar
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: juice-shop:${{ github.sha }}
+          format: 'table'
+          output: 'trivy-report.txt'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-report
+          path: trivy-report.txt

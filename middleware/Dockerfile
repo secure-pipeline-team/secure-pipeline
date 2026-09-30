@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Disable strict SSL for local dev (network has SSL inspection)
-RUN npm config set registry https://registry.npmmirror.com && \
+RUN npm config set registry https://registry.npmjs.org/ && \
     npm config set strict-ssl false && \
     npm install --omit=dev --no-audit --no-fund
 

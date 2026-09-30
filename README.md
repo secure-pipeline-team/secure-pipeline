@@ -15,3 +15,8 @@ This project is completed as part of the Academic Assignment for the Module IE31
 # References #
 
 # Project Report #
+## CI/CD Pipeline
+
+This project includes an automated DevSecOps CI/CD pipeline with 4 security gates (SAST/Semgrep, SCA/npm audit, Secrets/Gitleaks, Container/Trivy). See `.github/workflows/devsecops.yml` for details.
+
+<!-- Pipeline trigger: 2026-09-30 -->

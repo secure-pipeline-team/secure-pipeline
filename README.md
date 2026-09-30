@@ -1,6 +1,8 @@
 # Building and Securing a DevSecOps Pipeline for JuiceShop #
 
 This project is completed as part of the Academic Assignment for the Module IE3142 : DevOps Security.
+It includes an automated DevSecOps CI/CD pipeline with 4 security gates (SAST/Semgrep, SCA/npm audit, Secrets/Gitleaks, Container/Trivy). 
+See `.github/workflows/devsecops.yml` for details.
 
 ## Overview ##
 
@@ -37,5 +39,3 @@ combined into a complete DevSecOps pipeline.
 
 10.	GitHub, "About protected branches." https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
 
-
-## Project Report ##

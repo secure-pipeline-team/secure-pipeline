@@ -11,7 +11,7 @@ services:
     build: ./middleware
     container_name: juice-shop-middleware
     ports:
-      - "9090:8080"
+      - "8080:8080"
     environment:
       - TARGET=http://juice-shop:3000
     depends_on:
